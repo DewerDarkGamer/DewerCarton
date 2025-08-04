@@ -14,7 +14,7 @@ class PrinterConfig:
     
     # ความละเอียดการพิมพ์ (DPI)
     PRINT_QUALITY = {
-        "draft": "150dpi",      # ร่างงาน - ประหยัดหมึก5
+        "draft": "150dpi",      # ร่างงาน - ประหยัดหมึก55
         "normal": "300dpi",     # ปกติ
         "high": "600dpi"        # คุณภาพสูง
     }
