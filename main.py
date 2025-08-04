@@ -15,7 +15,7 @@ from print_config import (
 def get_part_rev_from_lot(lot_number):
     """Get part and revision data based on lot number conditions"""
     try:
-        # Check if lot number has sufficient length
+        # Check if lot number has sufficient length5
         if len(lot_number) < 6:
             return None, None
         
