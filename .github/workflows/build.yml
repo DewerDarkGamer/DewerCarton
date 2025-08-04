@@ -22,7 +22,7 @@ jobs:
       run: pip install pyinstaller
 
     - name: Build EXE with PyInstaller
-      run: pyinstaller --onefile lot_scanner.py
+      run: pyinstaller --onefile main.py
 
     - name: Upload EXE as Artifact
       uses: actions/upload-artifact@v3
