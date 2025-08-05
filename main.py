@@ -29,7 +29,7 @@ def scan_and_print():
         messagebox.showwarning("Warning", "Please enter lot number")
         return
     
-    # Get part and revision data from database
+    # Get part and revision data from database5
     part, rev = get_part_rev_from_lot(lot)
     
     if part is None or rev is None:
