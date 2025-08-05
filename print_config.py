@@ -8,13 +8,13 @@
 class PrinterConfig:
     """คลาสสำหรับตั้งค่าเครื่องปริ้น"""
     
-    # ตั้งค่าเครื่องปริ้น Epson L210
-    PRINTER_NAME = "Epson_L210"
-    PRINTER_MODEL = "epson"
+    # ตั้งค่าเครื่องปริ้น MACanton (Default Printer)
+    PRINTER_NAME = "MACanton"
+    PRINTER_MODEL = "generic"
     
     # ความละเอียดการพิมพ์ (DPI)
     PRINT_QUALITY = {
-        "draft": "150dpi",      # ร่างงาน - ประหยัดหมึก55
+        "draft": "150dpi",      # ร่างงาน - ประหยัดหมึก
         "normal": "300dpi",     # ปกติ
         "high": "600dpi"        # คุณภาพสูง
     }
@@ -47,8 +47,8 @@ class PaperConfig:
             "code": "letter"
         },
         "Label": {
-            "width": 100,   # ป้ายกำกับขนาดเล็ก
-            "height": 50,
+            "width": 95,    # ป้ายกำกับขนาดที่กำหนด
+            "height": 46,
             "code": "custom"
         }
     }
@@ -146,6 +146,14 @@ Revision      : {rev}
 Scan Date/Time: {time}
 System        : Lot Scanner v1.0
 ================================"""
+        },
+        "label_with_barcode": {
+            "name": "ป้ายกำกับพร้อมบาร์โค้ด",
+            "description": "ป้ายกำกับขนาด 95x46 มม. พร้อมบาร์โค้ด",
+            "format": """{part}
+{lot}
+|{barcode}|
+{date} {time}                    {rev_display}"""
         }
     }
     
@@ -171,10 +179,45 @@ def get_print_command(filename, config_name="normal"):
     printer = PrinterConfig.PRINTER_NAME
     quality = PrinterConfig.PRINT_QUALITY.get(config_name, "300dpi")
     
-    # คำสั่งสำหรับ Linux/Unix
+    # คำสั่งสำหรับ Linux/Unix - ใช้ default printer หรือ MACanton
     command = f"lp -d {printer} -o resolution={quality} -o media=a4 {filename}"
     
     return command
+
+def generate_barcode_text(lot):
+    """
+    สร้างบาร์โค้ดในรูปแบบข้อความ ASCII หรือไฟล์รูปภาพ
+    
+    Args:
+        lot (str): หมายเลข Lot
+        
+    Returns:
+        str: บาร์โค้ดในรูปแบบข้อความหรือชื่อไฟล์รูปภาพ
+    """
+    try:
+        # ลองใช้ไลบรารี่ python-barcode สำหรับสร้างบาร์โค้ดจริง
+        from barcode import Code128
+        from barcode.writer import SVGWriter
+        import io
+        
+        # สร้างบาร์โค้ด Code128
+        code = Code128(lot, writer=SVGWriter())
+        
+        # สร้างบาร์โค้ดในรูปแบบข้อความ ASCII แทนไฟล์
+        # เพื่อให้แสดงในข้อความได้
+        barcode_ascii = "|||" + "||".join(["|" if c.isalnum() else "||" for c in lot]) + "|||"
+        return barcode_ascii
+        
+    except ImportError:
+        # ถ้าไม่มีไลบรารี่ จะใช้วิธีสร้างแบบง่าย ๆ
+        barcode_lines = []
+        for char in lot:
+            if char.isalnum():
+                ascii_val = ord(char.upper())
+                pattern = f"|{'|' if ascii_val % 2 == 0 else '||'}|{'||' if ascii_val % 3 == 0 else '|'}|"
+                barcode_lines.append(pattern)
+        
+        return ''.join(barcode_lines)
 
 def format_label_text(lot, part, rev, time, template="standard"):
     """
@@ -193,12 +236,50 @@ def format_label_text(lot, part, rev, time, template="standard"):
     template_config = LabelFormat.LAYOUT_TEMPLATES.get(template, 
                       LabelFormat.LAYOUT_TEMPLATES["standard"])
     
-    formatted_text = template_config["format"].format(
-        lot=lot,
-        part=part, 
-        rev=rev,
-        time=time
-    )
+    if template == "label_with_barcode":
+        # แยกวันที่และเวลา
+        datetime_parts = time.split()
+        date_part = datetime_parts[0] if len(datetime_parts) > 0 else ""
+        time_part = datetime_parts[1] if len(datetime_parts) > 1 else ""
+        
+        # จัดรูปแบบวันที่ให้สั้นลง (เช่น 05 Aug 25)
+        if date_part:
+            try:
+                from datetime import datetime
+                date_obj = datetime.strptime(date_part, "%Y-%m-%d")
+                date_display = date_obj.strftime("%d %b %y")
+            except:
+                date_display = date_part
+        else:
+            date_display = ""
+        
+        # จัดรูปแบบเวลาให้สั้นลง (เช่น 14.58)
+        if time_part:
+            time_display = time_part.replace(":", ".")[:5]  # แสดงแค่ ชม.นาที
+        else:
+            time_display = ""
+        
+        # แสดง REV เฉพาะเมื่อมีข้อมูล
+        rev_display = rev if rev and rev.strip() else ""
+        
+        # สร้างบาร์โค้ด
+        barcode = generate_barcode_text(lot)
+        
+        formatted_text = template_config["format"].format(
+            lot=lot,
+            part=part,
+            barcode=barcode,
+            date=date_display,
+            time=time_display,
+            rev_display=rev_display
+        )
+    else:
+        formatted_text = template_config["format"].format(
+            lot=lot,
+            part=part, 
+            rev=rev,
+            time=time
+        )
     
     return formatted_text
 
@@ -226,8 +307,21 @@ def get_paper_settings(paper_size="A4", orientation="portrait"):
 
 # ตัวอย่างการใช้งาน
 if __name__ == "__main__":
-    # ทดสอบการจัดรูปแบบข้อความ
+    # ทดสอบการจัดรูปแบบข้อความแบบป้ายกำกับ
     sample_text = format_label_text(
+        lot="QSTZ8B2206",
+        part="D3022A", 
+        rev="REV.B",
+        time="2025-08-05 14:58:25",
+        template="label_with_barcode"
+    )
+    
+    print("ตัวอย่างป้ายกำกับ:")
+    print(sample_text)
+    print("\n" + "="*50)
+    
+    # ทดสอบการจัดรูปแบบข้อความแบบละเอียด
+    sample_text2 = format_label_text(
         lot="TB123Q789",
         part="J3011", 
         rev="Rev.04",
@@ -235,8 +329,8 @@ if __name__ == "__main__":
         template="detailed"
     )
     
-    print("ตัวอย่างผลลัพธ์:")
-    print(sample_text)
+    print("ตัวอย่างแบบละเอียด:")
+    print(sample_text2)
     
     # ทดสอบคำสั่งพิมพ์
     print("\nคำสั่งพิมพ์:")
