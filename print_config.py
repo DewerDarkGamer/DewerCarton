@@ -8,7 +8,7 @@
 class PrinterConfig:
     """คลาสสำหรับตั้งค่าเครื่องปริ้น"""
     
-    # ตั้งค่าเครื่องปริ้น MACanton (Default Printer)
+    # ตั้งค่าเครื่องปริ้น MACanton (Default Printer)5
     PRINTER_NAME = "MACanton"
     PRINTER_MODEL = "generic"
     
