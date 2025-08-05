@@ -1,0 +1,12 @@
+{
+  "TB_Q": {
+    "part": "J3011",
+    "revision": "REV.04",
+    "description": "Digits 2-3: TB, Digit 6: Q"
+  },
+  "ST_B": {
+    "part": "D3022A",
+    "revision": "REV.B",
+    "description": "Digits 2-3: ST, Digit 6: B"
+  }
+}
