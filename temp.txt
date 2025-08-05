@@ -1,0 +1,4 @@
+Lot: QTBZ3Q2144
+Part: J3011
+Revision: Rev.04
+Time: 2025-08-01 23:59:34
