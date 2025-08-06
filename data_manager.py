@@ -2,35 +2,32 @@ import tkinter as tk
 from tkinter import ttk, messagebox, simpledialog
 import json
 import os
+import sys
 
 class DataManager:
     """คลาสสำหรับจัดการข้อมูล Part และ Revision"""
+    def get_data_file_path():
+    # ใช้ path เดิมของ .exe
+        if getattr(sys, 'frozen', False):
+        base_path = os.path.dirname(sys.executable)
+        else:
+        base_path = os.path.dirname(__file__)
+
+            return os.path.join(base_path, 'part_data.json')
     
     def __init__(self, data_file="part_data.json"):
         self.data_file = data_file
         self.data = self.load_data()
     
-    def load_data(self):
-        """โหลดข้อมูลจากไฟล์ JSON"""
-        try:
-            if os.path.exists(self.data_file):
-                with open(self.data_file, 'r', encoding='utf-8') as f:
-                    return json.load(f)
-            else:
-                return {}
-        except Exception as e:
-            messagebox.showerror("Error", f"Cannot load data: {str(e)}")
-            return {}
+    def load_data():
+        path = get_data_file_path()
+        with open(path, 'r') as f:
+        return json.load(f)
     
-    def save_data(self):
-        """บันทึกข้อมูลลงไฟล์ JSON"""
-        try:
-            with open(self.data_file, 'w', encoding='utf-8') as f:
-                json.dump(self.data, f, ensure_ascii=False, indent=2)
-            return True
-        except Exception as e:
-            messagebox.showerror("Error", f"Cannot save data: {str(e)}")
-            return False
+    def save_data(data):
+        path = get_data_file_path()
+        with open(path, 'w') as f:
+        json.dump(data, f, indent=2)
     
     def add_data(self, digits_2_3, digit_6, part, revision, description=""):
         """เพิ่มข้อมูลใหม่"""
