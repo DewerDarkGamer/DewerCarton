@@ -6,74 +6,71 @@ import sys
 
 class DataManager:
     """คลาสสำหรับจัดการข้อมูล Part และ Revision"""
-    def get_data_file_path():
-    # ใช้ path เดิมของ .exe
-        if getattr(sys, 'frozen', False):
-        base_path = os.path.dirname(sys.executable)
-        else:
-        base_path = os.path.dirname(__file__)
 
-            return os.path.join(base_path, 'part_data.json')
-    
-    def __init__(self, data_file="part_data.json"):
-        self.data_file = data_file
+    @staticmethod
+    def get_data_file_path():
+        # ใช้ path เดิมของ .exe
+        if getattr(sys, 'frozen', False):
+            base_path = os.path.dirname(sys.executable)
+        else:
+            base_path = os.path.dirname(__file__)
+        return os.path.join(base_path, 'part_data.json')
+
+    def __init__(self, data_file=None):
+        self.data_file = data_file or self.get_data_file_path()
         self.data = self.load_data()
-    
-    def load_data():
-        path = get_data_file_path()
-        with open(path, 'r') as f:
-        return json.load(f)
-    
-    def save_data(data):
-        path = get_data_file_path()
-        with open(path, 'w') as f:
-        json.dump(data, f, indent=2)
-    
+
+    def load_data(self):
+        try:
+            with open(self.data_file, 'r') as f:
+                return json.load(f)
+        except Exception:
+            return {}
+
+    def save_data(self):
+        with open(self.data_file, 'w') as f:
+            json.dump(self.data, f, indent=2)
+
     def add_data(self, digits_2_3, digit_6, part, revision, description=""):
-        """เพิ่มข้อมูลใหม่"""
         key = f"{digits_2_3}_{digit_6}"
         self.data[key] = {
             "part": part,
             "revision": revision,
             "description": description or f"Digits 2-3: {digits_2_3}, Digit 6: {digit_6}"
         }
-        return self.save_data()
-    
+        self.save_data()
+        return True
+
     def update_data(self, key, part, revision, description=""):
-        """แก้ไขข้อมูล"""
         if key in self.data:
             self.data[key]["part"] = part
             self.data[key]["revision"] = revision
             if description:
                 self.data[key]["description"] = description
-            return self.save_data()
+            self.save_data()
+            return True
         return False
-    
+
     def delete_data(self, key):
-        """ลบข้อมูล"""
         if key in self.data:
             del self.data[key]
-            return self.save_data()
+            self.save_data()
+            return True
         return False
-    
+
     def get_part_rev(self, lot_number):
-        """ค้นหาข้อมูล Part และ Revision จาก Lot Number"""
         try:
             if len(lot_number) < 6:
                 return None, None
-            
-            # Extract digits at positions 2, 3, and 6 (index 1, 2, and 5)
             digit_2_3 = lot_number[1:3]
             digit_6 = lot_number[5]
-            
             key = f"{digit_2_3}_{digit_6}"
-            
             if key in self.data:
                 return self.data[key]["part"], self.data[key]["revision"]
-            
             return None, None
         except Exception:
             return None, None
+
 
 class DataManagerGUI:
     """หน้าจัดการข้อมูล GUI"""
