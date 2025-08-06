@@ -36,7 +36,7 @@ class LabelFormat:
 
 def format_label_text(lot, part, rev, time, template="macarton_label"):
     """
-    จัดรูปแบบข้อความตามเทมเพลต MACarton
+    จัดรูปแบบข้อความตามเทมเพลต MACarton สำหรับกระดาษขนาด 95x46mm
     
     Args:
         lot (str): หมายเลข Lot
@@ -82,11 +82,11 @@ def format_label_text(lot, part, rev, time, template="macarton_label"):
     # สร้างบาร์โค้ดแบบง่าย
     barcode = f"*{lot}*"
     
-    # สร้างเลเบลตามรูปแบบ MACarton
-    label_text = f"""                      {part}
-                {lot}
-             {barcode}
-{date_display}   {time_display}                    {rev_display}"""
+    # รูปแบบแนวนอนขนาดเล็กสำหรับ 95x46mm (ประมาณ 30 ตัวอักษรต่อบรรทัด)
+    label_text = f"""{part}
+{lot}
+{barcode}
+{date_display} {time_display} {rev_display}"""
     
     return label_text
 
@@ -102,10 +102,15 @@ def get_print_command(filename, config_name="normal", paper_size="Label"):
     Returns:
         str: คำสั่งสำหรับการพิมพ์
     """
+    import platform
     printer = PrinterConfig.PRINTER_NAME
     
-    # คำสั่งสำหรับการพิมพ์ขนาด 9x4 ซม. แนวนอน
-    command = f"lp -d {printer} -o media=custom.90x40mm -o orientation-requested=4 -o font=Times-New-Roman -o cpi=12 -o lpi=6 -o page-top=0 -o page-bottom=0 -o page-left=0 -o page-right=0 {filename}"
+    if platform.system().lower() == 'windows':
+        # คำสั่งสำหรับ Windows - ใช้ print หรือ copy to printer port
+        command = f'print /D:"{printer}" "{filename}"'
+    else:
+        # คำสั่งสำหรับ Linux/Unix - ใช้ lp
+        command = f"lp -d {printer} -o media=custom.90x40mm -o orientation-requested=4 -o font=Times-New-Roman -o cpi=12 -o lpi=6 -o page-top=0 -o page-bottom=0 -o page-left=0 -o page-right=0 {filename}"
     
     return command
 
