@@ -3,8 +3,8 @@ from datetime import datetime
 import os
 from tkinter import messagebox, ttk
 from print_config import (
-    format_label_text, 
-    get_print_command, 
+    format_label_text,
+    get_print_command,
     get_paper_settings,
     LabelFormat,
     PaperConfig,
@@ -70,18 +70,18 @@ def scan_and_print():
                         break
 
                 if macanton_printer:
-                    # ใช้คำสั่งพิมพ์จากไฟล์ตั้งค่าสำหรับกระดาษขนาด 95x46 มม.
+                    # ใช้คำสั่งพิมพ์จากไฟล์ตั้งค่าสำหรับกระดาษขนาด 95x46 มม. แนวนอน
                     print_cmd = get_print_command(filename, "normal", "Label").split()
                     subprocess.run(print_cmd, check=True)
-                    messagebox.showinfo("Success", f"File sent to MACanton (Label 95x46mm): {filename}")
+                    messagebox.showinfo("Success", f"File sent to MACanton (Label 95x46mm Landscape): {filename}")
                 else:
-                    # Try default printer with small font settings
-                    subprocess.run(["lp", "-o", "cpi=20", "-o", "lpi=10", filename], check=True)
-                    messagebox.showinfo("Success", f"File sent to default printer: {filename}")
+                    # Try default printer with very small font settings and landscape orientation
+                    subprocess.run(["lp", "-o", "orientation-requested=4", "-o", "cpi=20", "-o", "lpi=8", "-o", "fit-to-page", filename], check=True)
+                    messagebox.showinfo("Success", f"File sent to default printer (Landscape): {filename}")
 
             except (subprocess.CalledProcessError, FileNotFoundError):
                 # If lp is not available, save file with printer-ready format
-                messagebox.showinfo("File Saved", f"File saved as: {filename}\nConnect to printer and use: lp -o cpi=20 -o lpi=10 {filename}")
+                messagebox.showinfo("File Saved", f"File saved as: {filename}\nConnect to printer and use: lp -o orientation-requested=4 -o cpi=20 -o lpi=8 -o fit-to-page {filename}")
     except Exception as e:
         messagebox.showerror("Error", f"Cannot process file: {str(e)}")
 
@@ -89,13 +89,40 @@ def check_printer_status():
     """Check if MACanton printer is available"""
     try:
         import subprocess
-        result = subprocess.run(["lpstat", "-p"], capture_output=True, text=True)
-        printers = result.stdout
-
-        if 'macanton' in printers.lower():
-            messagebox.showinfo("Printer Status", "MACanton printer is connected and ready")
+        import platform
+        
+        if platform.system() == "Windows":
+            # สำหรับ Windows ใช้ wmic หรือ PowerShell
+            try:
+                result = subprocess.run(["wmic", "printer", "get", "name"], 
+                                      capture_output=True, text=True)
+                printers = result.stdout
+                
+                if result.returncode == 0:
+                    if 'macanton' in printers.lower():
+                        messagebox.showinfo("Printer Status", "MACanton printer is connected and ready")
+                    else:
+                        messagebox.showinfo("Printer Status", f"Available printers:\n{printers}")
+                else:
+                    # ลอง PowerShell แทน
+                    result = subprocess.run(["powershell", "-Command", "Get-Printer | Select-Object Name"], 
+                                          capture_output=True, text=True)
+                    printers = result.stdout
+                    if 'macanton' in printers.lower():
+                        messagebox.showinfo("Printer Status", "MACanton printer is connected and ready")
+                    else:
+                        messagebox.showinfo("Printer Status", f"Available printers:\n{printers}")
+            except:
+                messagebox.showinfo("Printer Status", "Cannot check printer status on Windows.\nPlease check printer manually in Control Panel.")
         else:
-            messagebox.showwarning("Printer Status", "MACanton not found. Available printers:\n" + printers)
+            # สำหรับ Linux/Unix
+            result = subprocess.run(["lpstat", "-p"], capture_output=True, text=True)
+            printers = result.stdout
+
+            if 'macanton' in printers.lower():
+                messagebox.showinfo("Printer Status", "MACanton printer is connected and ready")
+            else:
+                messagebox.showwarning("Printer Status", "MACanton not found. Available printers:\n" + printers)
     except Exception as e:
         messagebox.showerror("Error", f"Cannot check printer status: {str(e)}")
 
@@ -139,17 +166,17 @@ def on_key_release_lot(event):
 entry_lot.bind('<KeyRelease>', on_key_release_lot)
 
 # Scan and print button
-btn_scan = tk.Button(root, text="Scan and Print", command=scan_and_print, 
+btn_scan = tk.Button(root, text="Scan and Print", command=scan_and_print,
                      font=default_font, bg="#4CAF50", fg="white", pady=5)
 btn_scan.pack(pady=10)
 
 # Check printer button
-btn_printer = tk.Button(root, text="Check MACanton", command=check_printer_status, 
+btn_printer = tk.Button(root, text="Check MACanton", command=check_printer_status,
                        font=small_font, bg="#FF9800", fg="white")
 btn_printer.pack(pady=5)
 
 # Data management button
-btn_data_manager = tk.Button(root, text="Manage Data", command=lambda: open_data_manager(root), 
+btn_data_manager = tk.Button(root, text="Manage Data", command=lambda: open_data_manager(root),
                            font=small_font, bg="#607D8B", fg="white")
 btn_data_manager.pack(pady=5)
 
@@ -165,7 +192,7 @@ info_text = """Instructions:
 3. Lot number must be at least 6 digits long
 4. Paper size: 95x46 mm (Label)"""
 
-info_label = tk.Label(root, text=info_text, font=small_font, 
+info_label = tk.Label(root, text=info_text, font=small_font,
                      justify=tk.LEFT, fg="gray")
 info_label.pack(pady=10)
 
