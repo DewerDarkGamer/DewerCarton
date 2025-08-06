@@ -5,10 +5,7 @@ from tkinter import messagebox, ttk
 from print_config import (
     format_label_text,
     get_print_command,
-    get_paper_settings,
-    LabelFormat,
-    PaperConfig,
-    PrinterConfig
+    get_paper_settings
 )
 from data_manager import DataManager, open_data_manager
 
@@ -37,23 +34,22 @@ def scan_and_print():
 
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    # ใช้รูปแบบ compact_label ที่เหมาะกับกระดาษขนาดเล็ก
-    result = format_label_text(lot, part, rev, now, "compact_label")
+    # ใช้รูปแบบ macarton_label
+    result = format_label_text(lot, part, rev, now, "macarton_label")
 
     # Display result on screen
     text_output.delete(1.0, tk.END)
     text_output.insert(tk.END, result)
 
-    # Save file and attempt to print
+    # Save file for printing
     try:
-        filename = f"lot_scan_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+        filename = f"macarton_label_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
         with open(filename, "w", encoding="utf-8") as f:
             f.write(result)
 
         # Try different print methods based on OS
         import platform
         if platform.system() == "Windows":
-            # สำหรับ Windows ใช้ notepad เพื่อกำหนดฟอนต์ Times New Roman
             import subprocess
             try:
                 # ใช้ notepad /p เพื่อพิมพ์ทันที
@@ -63,112 +59,85 @@ def scan_and_print():
                     os.remove(filename)
                 except:
                     pass
-                messagebox.showinfo("Success", "Printed (Times New Roman, 95x46mm)")
+                messagebox.showinfo("Success", "Printed MACarton Label (9x4 cm)")
             except:
                 os.startfile(filename, "print")
         else:
-            # For Linux/Unix systems (like Replit) with printer
+            # For Linux/Unix systems
             import subprocess
             try:
-                # Check if MACanton or any printer is available
-                result = subprocess.run(["lpstat", "-p"], capture_output=True, text=True)
-                printers = result.stdout
-
-                # Try to find MACanton or use default printer
-                macanton_printer = None
-                for line in printers.split('\n'):
-                    if 'macanton' in line.lower() or 'default' in line.lower():
-                        macanton_printer = line.split()[1]  # Get printer name
-                        break
-
-                if macanton_printer:
-                    # ใช้คำสั่งพิมพ์จากไฟล์ตั้งค่าสำหรับกระดาษขนาด 95x46 มม. แนวนอน
-                    print_cmd = get_print_command(filename, "normal", "Label").split()
-                    subprocess.run(print_cmd, check=True)
-                    # ลบไฟล์หลังพิมพ์เสร็จ
-                    try:
-                        os.remove(filename)
-                    except:
-                        pass
-                    messagebox.showinfo("Success", "Printed to MACanton (95x46mm, Times New Roman)")
-                else:
-                    # Try default printer with Times New Roman font and very small size
-                    subprocess.run(["lp", "-o", "orientation-requested=4", "-o", "PageSize=Custom.95x46mm", "-o", "Font=Times-Roman", "-o", "FontSize=6", "-o", "cpi=24", "-o", "lpi=12", filename], check=True)
-                    # ลบไฟล์หลังพิมพ์เสร็จ
-                    try:
-                        os.remove(filename)
-                    except:
-                        pass
-                    messagebox.showinfo("Success", "Printed (95x46mm, Times New Roman)")
+                # ใช้คำสั่งพิมพ์สำหรับ MACarton
+                print_cmd = get_print_command(filename, "normal", "Label").split()
+                subprocess.run(print_cmd, check=True)
+                # ลบไฟล์หลังพิมพ์เสร็จ
+                try:
+                    os.remove(filename)
+                except:
+                    pass
+                messagebox.showinfo("Success", "Printed MACarton Label (9x4 cm)")
 
             except (subprocess.CalledProcessError, FileNotFoundError):
-                # If lp is not available, save file with printer-ready format
-                messagebox.showinfo("File Saved", f"File saved as: {filename}\nConnect to printer and use: lp -o orientation-requested=4 -o PageSize=Custom.95x46mm -o Font=Times-Roman -o FontSize=6 {filename}")
+                messagebox.showinfo("File Saved", f"File saved as: {filename}\nConnect to MACarton printer and print manually")
     except Exception as e:
         messagebox.showerror("Error", f"Cannot process file: {str(e)}")
 
 def check_printer_status():
-    """Check if MACanton printer is available"""
+    """Check if MACarton printer is available"""
     try:
         import subprocess
         import platform
-        
+
         if platform.system() == "Windows":
-            # สำหรับ Windows ใช้ wmic หรือ PowerShell
             try:
                 result = subprocess.run(["wmic", "printer", "get", "name"], 
                                       capture_output=True, text=True)
                 printers = result.stdout
-                
+
                 if result.returncode == 0:
-                    if 'macanton' in printers.lower():
-                        messagebox.showinfo("Printer Status", "MACanton printer is connected and ready")
+                    if 'macarton' in printers.lower():
+                        messagebox.showinfo("Printer Status", "MACarton printer is connected and ready")
                     else:
                         messagebox.showinfo("Printer Status", f"Available printers:\n{printers}")
                 else:
-                    # ลอง PowerShell แทน
                     result = subprocess.run(["powershell", "-Command", "Get-Printer | Select-Object Name"], 
                                           capture_output=True, text=True)
                     printers = result.stdout
-                    if 'macanton' in printers.lower():
-                        messagebox.showinfo("Printer Status", "MACanton printer is connected and ready")
+                    if 'macarton' in printers.lower():
+                        messagebox.showinfo("Printer Status", "MACarton printer is connected and ready")
                     else:
                         messagebox.showinfo("Printer Status", f"Available printers:\n{printers}")
             except:
-                messagebox.showinfo("Printer Status", "Cannot check printer status on Windows.\nPlease check printer manually in Control Panel.")
+                messagebox.showinfo("Printer Status", "Cannot check printer status on Windows.\nPlease check MACarton printer manually.")
         else:
-            # สำหรับ Linux/Unix
             result = subprocess.run(["lpstat", "-p"], capture_output=True, text=True)
             printers = result.stdout
 
-            if 'macanton' in printers.lower():
-                messagebox.showinfo("Printer Status", "MACanton printer is connected and ready")
+            if 'macarton' in printers.lower():
+                messagebox.showinfo("Printer Status", "MACarton printer is connected and ready")
             else:
-                messagebox.showwarning("Printer Status", "MACanton not found. Available printers:\n" + printers)
+                messagebox.showwarning("Printer Status", "MACarton not found. Available printers:\n" + printers)
     except Exception as e:
         messagebox.showerror("Error", f"Cannot check printer status: {str(e)}")
 
 # Create GUI
 root = tk.Tk()
-root.title("Lot Scanner")
-root.geometry("400x350")
+root.title("MACarton Lot Scanner")
+root.geometry("500x450")
 
 # Define fonts
 try:
-    # Try to use Unicode-supporting fonts
     default_font = ("DejaVu Sans", 12)
     small_font = ("DejaVu Sans", 10)
     large_font = ("DejaVu Sans", 14)
     title_font = ("DejaVu Sans", 16, "bold")
 except:
-    # If not available, use default fonts
     default_font = ("TkDefaultFont", 12)
     small_font = ("TkDefaultFont", 10)
     large_font = ("TkDefaultFont", 14)
     title_font = ("TkDefaultFont", 16, "bold")
 
 # App title
-title_label = tk.Label(root, text="Lot Scanner", font=title_font)
+title_label = tk.Label(root, text="MACarton Lot Scanner", font=title_font)
 title_label.pack(pady=10)
 
 # Lot number input field
@@ -193,7 +162,7 @@ btn_scan = tk.Button(root, text="Scan and Print", command=scan_and_print,
 btn_scan.pack(pady=10)
 
 # Check printer button
-btn_printer = tk.Button(root, text="Check MACanton", command=check_printer_status,
+btn_printer = tk.Button(root, text="Check MACarton", command=check_printer_status,
                        font=small_font, bg="#FF9800", fg="white")
 btn_printer.pack(pady=5)
 
@@ -203,8 +172,8 @@ btn_data_manager = tk.Button(root, text="Manage Data", command=lambda: open_data
 btn_data_manager.pack(pady=5)
 
 # Output area
-tk.Label(root, text="Result:", font=default_font).pack(pady=(20,0))
-text_output = tk.Text(root, height=6, width=40, font=small_font)
+tk.Label(root, text="Label Preview:", font=default_font).pack(pady=(20,0))
+text_output = tk.Text(root, height=8, width=50, font=("Courier", 9))
 text_output.pack(pady=5)
 
 # Instructions
@@ -212,7 +181,8 @@ info_text = """Instructions:
 1. System checks digits 2-3 and digit 6 of lot number
 2. Example: QSTZ8B2206 → Digits 2-3: ST, Digit 6: B
 3. Lot number must be at least 6 digits long
-4. Paper size: 95x46 mm (Label)"""
+4. Label size: 9x4 cm (MACarton format)
+5. Font: Times New Roman"""
 
 info_label = tk.Label(root, text=info_text, font=small_font,
                      justify=tk.LEFT, fg="gray")
