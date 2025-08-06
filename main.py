@@ -2,11 +2,10 @@ import tkinter as tk
 from datetime import datetime
 import os
 import platform
-from tkinter import messagebox, ttk
+from tkinter import messagebox
 from print_config import (
     format_label_text,
-    get_print_command,
-    get_paper_settings
+    get_print_command
 )
 
 # ตรวจสอบว่าเป็น Windows และ Raw Printing พร้อมใช้งาน
@@ -73,19 +72,24 @@ def scan_and_print():
             f.write(result)
 
         if IS_WINDOWS:
-            # ใช้คำสั่งพิมพ์สำหรับ Windows
+            # ใช้ Windows Print Spooler สำหรับการพิมพ์
             import subprocess
             try:
-                # ลองใช้คำสั่ง print สำหรับ Windows
-                subprocess.run(['notepad.exe', '/p', filename], check=True)
-                messagebox.showinfo("Success", f"Sent to Windows default printer\nFile: {filename}")
+                # ใช้คำสั่ง print กับ Windows Print Spooler
+                subprocess.run(['print', f'/D:"MACarton"', filename], check=True)
+                messagebox.showinfo("Success", f"Sent to MACarton printer via Print Spooler\nFile: {filename}")
             except:
                 try:
-                    # ลองใช้คำสั่ง type + print สำหรับ Windows
-                    subprocess.run(f'type "{filename}" > PRN', shell=True, check=True)
-                    messagebox.showinfo("Success", "Printed to default printer")
+                    # ลองใช้คำสั่ง copy ไปยัง printer port
+                    subprocess.run(['copy', filename, 'PRN'], shell=True, check=True)
+                    messagebox.showinfo("Success", "Printed to default printer via Print Spooler")
                 except:
-                    messagebox.showinfo("File Saved", f"File saved as: {filename}\nManually print this file to MACarton printer")
+                    try:
+                        # ลองใช้ lpr command (ถ้ามี)
+                        subprocess.run(['lpr', '-P', 'MACarton', filename], check=True)
+                        messagebox.showinfo("Success", "Printed via lpr command")
+                    except:
+                        messagebox.showinfo("File Saved", f"File saved as: {filename}\nManually print this file to MACarton printer")
         else:
             # คำสั่งสำหรับ Linux/Unix
             import subprocess
