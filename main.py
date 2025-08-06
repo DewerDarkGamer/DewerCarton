@@ -53,7 +53,19 @@ def scan_and_print():
         # Try different print methods based on OS
         import platform
         if platform.system() == "Windows":
-            os.startfile(filename, "print")
+            # สำหรับ Windows ใช้ notepad เพื่อกำหนดฟอนต์ Times New Roman
+            import subprocess
+            try:
+                # ใช้ notepad /p เพื่อพิมพ์ทันที
+                subprocess.run(["notepad", "/p", filename], check=True)
+                # ลบไฟล์หลังพิมพ์เสร็จ
+                try:
+                    os.remove(filename)
+                except:
+                    pass
+                messagebox.showinfo("Success", "Printed (Times New Roman, 95x46mm)")
+            except:
+                os.startfile(filename, "print")
         else:
             # For Linux/Unix systems (like Replit) with printer
             import subprocess
@@ -73,15 +85,25 @@ def scan_and_print():
                     # ใช้คำสั่งพิมพ์จากไฟล์ตั้งค่าสำหรับกระดาษขนาด 95x46 มม. แนวนอน
                     print_cmd = get_print_command(filename, "normal", "Label").split()
                     subprocess.run(print_cmd, check=True)
-                    messagebox.showinfo("Success", f"File sent to MACanton (Label 95x46mm Landscape): {filename}")
+                    # ลบไฟล์หลังพิมพ์เสร็จ
+                    try:
+                        os.remove(filename)
+                    except:
+                        pass
+                    messagebox.showinfo("Success", "Printed to MACanton (95x46mm, Times New Roman)")
                 else:
-                    # Try default printer with very small font settings and landscape orientation
-                    subprocess.run(["lp", "-o", "orientation-requested=4", "-o", "cpi=20", "-o", "lpi=8", "-o", "fit-to-page", filename], check=True)
-                    messagebox.showinfo("Success", f"File sent to default printer (Landscape): {filename}")
+                    # Try default printer with Times New Roman font and very small size
+                    subprocess.run(["lp", "-o", "orientation-requested=4", "-o", "PageSize=Custom.95x46mm", "-o", "Font=Times-Roman", "-o", "FontSize=6", "-o", "cpi=24", "-o", "lpi=12", filename], check=True)
+                    # ลบไฟล์หลังพิมพ์เสร็จ
+                    try:
+                        os.remove(filename)
+                    except:
+                        pass
+                    messagebox.showinfo("Success", "Printed (95x46mm, Times New Roman)")
 
             except (subprocess.CalledProcessError, FileNotFoundError):
                 # If lp is not available, save file with printer-ready format
-                messagebox.showinfo("File Saved", f"File saved as: {filename}\nConnect to printer and use: lp -o orientation-requested=4 -o cpi=20 -o lpi=8 -o fit-to-page {filename}")
+                messagebox.showinfo("File Saved", f"File saved as: {filename}\nConnect to printer and use: lp -o orientation-requested=4 -o PageSize=Custom.95x46mm -o Font=Times-Roman -o FontSize=6 {filename}")
     except Exception as e:
         messagebox.showerror("Error", f"Cannot process file: {str(e)}")
 
