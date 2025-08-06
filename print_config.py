@@ -95,10 +95,11 @@ class TextLayout:
     
     # ขนาดตัวอักษร
     FONT_SIZES = {
+        "tiny": 6,      # เล็กมาก (สำหรับป้ายกำกับ)
         "small": 8,     # เล็ก
-        "normal": 12,   # ปกติ
-        "large": 16,    # ใหญ่
-        "xlarge": 20    # ใหญ่มาก
+        "normal": 10,   # ปกติ (ลดลงจาก 12)
+        "large": 12,    # ใหญ่ (ลดลงจาก 16)
+        "xlarge": 14    # ใหญ่มาก (ลดลงจาก 20)
     }
     
     # การจัดตำแหน่งข้อความ
@@ -150,10 +151,16 @@ System        : Lot Scanner v1.0
         "label_with_barcode": {
             "name": "ป้ายกำกับพร้อมบาร์โค้ด",
             "description": "ป้ายกำกับขนาด 95x46 มม. พร้อมบาร์โค้ด",
-            "format": """{part}
+            "format": """{part} {rev_display}
 {lot}
-|{barcode}|
-{date} {time}                    {rev_display}"""
+{date} {time}"""
+        },
+        "compact_label": {
+            "name": "ป้ายกำกับแบบกะทัดรัด",
+            "description": "ป้ายกำกับขนาดเล็ก 95x46 มม.",
+            "format": """{part}|{rev_display}
+{lot}
+{date}|{time}"""
         }
     }
     
@@ -165,13 +172,14 @@ System        : Lot Scanner v1.0
         "time": {"x": 10, "y": 55}      # ตำแหน่ง เวลา
     }
 
-def get_print_command(filename, config_name="normal"):
+def get_print_command(filename, config_name="normal", paper_size="Label"):
     """
     สร้างคำสั่งสำหรับการพิมพ์ตามการตั้งค่า
     
     Args:
         filename (str): ชื่อไฟล์ที่จะพิมพ์
         config_name (str): ชื่อการตั้งค่า (normal, draft, high)
+        paper_size (str): ขนาดกระดาษ
     
     Returns:
         str: คำสั่งสำหรับการพิมพ์
@@ -179,8 +187,15 @@ def get_print_command(filename, config_name="normal"):
     printer = PrinterConfig.PRINTER_NAME
     quality = PrinterConfig.PRINT_QUALITY.get(config_name, "300dpi")
     
-    # คำสั่งสำหรับ Linux/Unix - ใช้ default printer หรือ MACanton
-    command = f"lp -d {printer} -o resolution={quality} -o media=a4 {filename}"
+    # เลือกขนาดกระดาษตามการตั้งค่า
+    if paper_size == "Label":
+        media_option = "custom.95x46mm"  # ขนาดป้ายกำกับ 95x46 มม.
+    else:
+        paper_config = PaperConfig.PAPER_SIZES.get(paper_size, PaperConfig.PAPER_SIZES["A4"])
+        media_option = paper_config["code"]
+    
+    # คำสั่งสำหรับ Linux/Unix พร้อมการตั้งค่าขนาดตัวอักษรเล็ก
+    command = f"lp -d {printer} -o resolution={quality} -o media={media_option} -o cpi=16 -o lpi=8 {filename}"
     
     return command
 
@@ -236,43 +251,57 @@ def format_label_text(lot, part, rev, time, template="standard"):
     template_config = LabelFormat.LAYOUT_TEMPLATES.get(template, 
                       LabelFormat.LAYOUT_TEMPLATES["standard"])
     
-    if template == "label_with_barcode":
+    if template in ["label_with_barcode", "compact_label"]:
         # แยกวันที่และเวลา
         datetime_parts = time.split()
         date_part = datetime_parts[0] if len(datetime_parts) > 0 else ""
         time_part = datetime_parts[1] if len(datetime_parts) > 1 else ""
         
-        # จัดรูปแบบวันที่ให้สั้นลง (เช่น 05 Aug 25)
+        # จัดรูปแบบวันที่ให้สั้นลง (เช่น 05Aug25)
         if date_part:
             try:
                 from datetime import datetime
                 date_obj = datetime.strptime(date_part, "%Y-%m-%d")
-                date_display = date_obj.strftime("%d %b %y")
+                date_display = date_obj.strftime("%d%b%y")  # ลบช่องว่างออก
             except:
-                date_display = date_part
+                date_display = date_part[:8]  # จำกัดความยาว
         else:
             date_display = ""
         
-        # จัดรูปแบบเวลาให้สั้นลง (เช่น 14.58)
+        # จัดรูปแบบเวลาให้สั้นลง (เช่น 14:58)
         if time_part:
-            time_display = time_part.replace(":", ".")[:5]  # แสดงแค่ ชม.นาที
+            time_display = time_part[:5]  # แสดงแค่ ชม:นาที
         else:
             time_display = ""
         
-        # แสดง REV เฉพาะเมื่อมีข้อมูล
-        rev_display = rev if rev and rev.strip() else ""
+        # แสดง REV แบบสั้น (เช่น B จาก REV.B)
+        if rev and rev.strip():
+            if "REV." in rev.upper():
+                rev_display = rev.upper().replace("REV.", "")
+            else:
+                rev_display = rev[:3]  # จำกัดความยาว
+        else:
+            rev_display = ""
         
-        # สร้างบาร์โค้ด
-        barcode = generate_barcode_text(lot)
-        
-        formatted_text = template_config["format"].format(
-            lot=lot,
-            part=part,
-            barcode=barcode,
-            date=date_display,
-            time=time_display,
-            rev_display=rev_display
-        )
+        if template == "label_with_barcode":
+            # สร้างบาร์โค้ด
+            barcode = generate_barcode_text(lot)
+            formatted_text = template_config["format"].format(
+                lot=lot,
+                part=part,
+                barcode=barcode,
+                date=date_display,
+                time=time_display,
+                rev_display=rev_display
+            )
+        else:  # compact_label
+            formatted_text = template_config["format"].format(
+                lot=lot,
+                part=part,
+                date=date_display,
+                time=time_display,
+                rev_display=rev_display
+            )
     else:
         formatted_text = template_config["format"].format(
             lot=lot,
