@@ -1,12 +1,27 @@
 import tkinter as tk
 from datetime import datetime
 import os
+import platform
 from tkinter import messagebox, ttk
 from print_config import (
     format_label_text,
     get_print_command,
     get_paper_settings
 )
+
+# ตรวจสอบว่าเป็น Windows และ Raw Printing พร้อมใช้งาน
+RAW_PRINT_AVAILABLE = False
+IS_WINDOWS = platform.system().lower() == 'windows'
+
+if IS_WINDOWS:
+    try:
+        import win32print
+        import win32api
+        RAW_PRINT_AVAILABLE = True
+        from print_raw import print_raw_text, get_available_printers
+    except ImportError:
+        RAW_PRINT_AVAILABLE = False
+
 from data_manager import DataManager, open_data_manager
 
 def get_part_rev_from_lot(lot_number):
@@ -41,42 +56,45 @@ def scan_and_print():
     text_output.delete(1.0, tk.END)
     text_output.insert(tk.END, result)
 
-    # Save file for printing
+    # พิมพ์สำหรับ Windows
+    if IS_WINDOWS and RAW_PRINT_AVAILABLE:
+        try:
+            # ลองพิมพ์ Raw Text โดยตรงไปยัง MACarton printer
+            if print_raw_text("MACarton", result, "MACarton Label"):
+                messagebox.showinfo("Success", "Printed MACarton Label (9x4 cm)")
+                return
+        except Exception as e:
+            print(f"Raw printing failed: {e}")
+    
+    # ถ้าพิมพ์ Raw ไม่ได้ หรือไม่ใช่ Windows ให้สร้างไฟล์
     try:
         filename = f"macarton_label_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
         with open(filename, "w", encoding="utf-8") as f:
             f.write(result)
 
-        # Try different print methods based on OS
-        import platform
-        if platform.system() == "Windows":
+        if IS_WINDOWS:
+            # ใช้คำสั่งพิมพ์สำหรับ Windows
             import subprocess
             try:
-                # ใช้ notepad /p เพื่อพิมพ์ทันที
-                subprocess.run(["notepad", "/p", filename], check=True)
-                # ลบไฟล์หลังพิมพ์เสร็จ
-                try:
-                    os.remove(filename)
-                except:
-                    pass
-                messagebox.showinfo("Success", "Printed MACarton Label (9x4 cm)")
+                # ลองใช้คำสั่ง print สำหรับ Windows
+                subprocess.run(['notepad.exe', '/p', filename], check=True)
+                messagebox.showinfo("Success", f"Sent to Windows default printer\nFile: {filename}")
             except:
-                os.startfile(filename, "print")
+                try:
+                    # ลองใช้คำสั่ง type + print สำหรับ Windows
+                    subprocess.run(f'type "{filename}" > PRN', shell=True, check=True)
+                    messagebox.showinfo("Success", "Printed to default printer")
+                except:
+                    messagebox.showinfo("File Saved", f"File saved as: {filename}\nManually print this file to MACarton printer")
         else:
-            # For Linux/Unix systems
+            # คำสั่งสำหรับ Linux/Unix
             import subprocess
             try:
-                # ใช้คำสั่งพิมพ์สำหรับ MACarton
                 print_cmd = get_print_command(filename, "normal", "Label").split()
                 subprocess.run(print_cmd, check=True)
-                # ลบไฟล์หลังพิมพ์เสร็จ
-                try:
-                    os.remove(filename)
-                except:
-                    pass
+                os.remove(filename)
                 messagebox.showinfo("Success", "Printed MACarton Label (9x4 cm)")
-
-            except (subprocess.CalledProcessError, FileNotFoundError):
+            except:
                 messagebox.showinfo("File Saved", f"File saved as: {filename}\nConnect to MACarton printer and print manually")
     except Exception as e:
         messagebox.showerror("Error", f"Cannot process file: {str(e)}")
@@ -84,40 +102,42 @@ def scan_and_print():
 def check_printer_status():
     """Check if MACarton printer is available"""
     try:
-        import subprocess
-        import platform
-
-        if platform.system() == "Windows":
-            try:
+        if IS_WINDOWS and RAW_PRINT_AVAILABLE:
+            # ใช้ win32print สำหรับ Windows
+            printers = get_available_printers()
+            if not printers:
+                messagebox.showinfo("Printer Status", "No printers found")
+                return
+                
+            printer_list = "\n".join([f"- {printer}" for printer in printers])
+            
+            if any('macarton' in printer.lower() for printer in printers):
+                messagebox.showinfo("Printer Status", f"MACarton printer found!\n\nAvailable printers:\n{printer_list}")
+            else:
+                messagebox.showinfo("Printer Status", f"MACarton printer not found\n\nAvailable printers:\n{printer_list}")
+        else:
+            # สำหรับ Windows ที่ไม่มี win32print หรือ Linux
+            import subprocess
+            
+            if IS_WINDOWS:
+                # ใช้คำสั่ง wmic สำหรับ Windows
                 result = subprocess.run(["wmic", "printer", "get", "name"], 
                                       capture_output=True, text=True)
                 printers = result.stdout
-
-                if result.returncode == 0:
-                    if 'macarton' in printers.lower():
-                        messagebox.showinfo("Printer Status", "MACarton printer is connected and ready")
-                    else:
-                        messagebox.showinfo("Printer Status", f"Available printers:\n{printers}")
-                else:
-                    result = subprocess.run(["powershell", "-Command", "Get-Printer | Select-Object Name"], 
-                                          capture_output=True, text=True)
-                    printers = result.stdout
-                    if 'macarton' in printers.lower():
-                        messagebox.showinfo("Printer Status", "MACarton printer is connected and ready")
-                    else:
-                        messagebox.showinfo("Printer Status", f"Available printers:\n{printers}")
-            except:
-                messagebox.showinfo("Printer Status", "Cannot check printer status on Windows.\nPlease check MACarton printer manually.")
-        else:
-            result = subprocess.run(["lpstat", "-p"], capture_output=True, text=True)
-            printers = result.stdout
-
-            if 'macarton' in printers.lower():
-                messagebox.showinfo("Printer Status", "MACarton printer is connected and ready")
             else:
-                messagebox.showwarning("Printer Status", "MACarton not found. Available printers:\n" + printers)
+                # ใช้คำสั่ง lpstat สำหรับ Linux
+                result = subprocess.run(["lpstat", "-p"], capture_output=True, text=True)
+                printers = result.stdout
+
+            if result.returncode == 0:
+                if 'macarton' in printers.lower():
+                    messagebox.showinfo("Printer Status", "MACarton printer is connected and ready")
+                else:
+                    messagebox.showinfo("Printer Status", f"Available printers:\n{printers}")
+            else:
+                messagebox.showinfo("Printer Status", "No printers found or command not available")
     except Exception as e:
-        messagebox.showerror("Error", f"Cannot check printer status: {str(e)}")
+        messagebox.showinfo("Printer Status", f"Cannot check printer status: {str(e)}")
 
 # Create GUI
 root = tk.Tk()
