@@ -74,9 +74,10 @@ def scan_and_print():
                 if macanton_printer:
                     # ใช้คำสั่งพิมพ์จากไฟล์ตั้งค่า
                     selected_quality = quality_var.get()
-                    print_cmd = get_print_command(filename, selected_quality).split()
+                    selected_paper = paper_var.get()
+                    print_cmd = get_print_command(filename, selected_quality, selected_paper).split()
                     subprocess.run(print_cmd, check=True)
-                    messagebox.showinfo("Success", f"File sent to MACanton ({selected_quality} quality): {filename}")
+                    messagebox.showinfo("Success", f"File sent to MACanton ({selected_quality} quality, {selected_paper}): {filename}")
                 else:
                     # Try default printer
                     subprocess.run(["lp", filename], check=True)
