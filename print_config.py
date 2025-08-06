@@ -95,11 +95,11 @@ class TextLayout:
     
     # ขนาดตัวอักษร
     FONT_SIZES = {
-        "tiny": 6,      # เล็กมาก (สำหรับป้ายกำกับ)
-        "small": 8,     # เล็ก
-        "normal": 10,   # ปกติ (ลดลงจาก 12)
-        "large": 12,    # ใหญ่ (ลดลงจาก 16)
-        "xlarge": 14    # ใหญ่มาก (ลดลงจาก 20)
+        "tiny": 4,      # เล็กมาก (สำหรับป้ายกำกับ)
+        "small": 5,     # เล็ก
+        "normal": 6,    # ปกติ (ลดลงเพื่อให้พอดีกับขนาด 95x46 มม.)
+        "large": 7,     # ใหญ่
+        "xlarge": 8     # ใหญ่มาก
     }
     
     # การจัดตำแหน่งข้อความ
@@ -158,9 +158,9 @@ System        : Lot Scanner v1.0
         "compact_label": {
             "name": "ป้ายกำกับแบบกะทัดรัด",
             "description": "ป้ายกำกับขนาดเล็ก 95x46 มม.",
-            "format": """{part}|{rev_display}
+            "format": """{part} {rev_display}
 {lot}
-{date}|{time}"""
+{time}"""
         }
     }
     
@@ -194,8 +194,8 @@ def get_print_command(filename, config_name="normal", paper_size="Label"):
         paper_config = PaperConfig.PAPER_SIZES.get(paper_size, PaperConfig.PAPER_SIZES["A4"])
         media_option = paper_config["code"]
     
-    # คำสั่งสำหรับ Linux/Unix พร้อมการตั้งค่าขนาดตัวอักษรเล็ก
-    command = f"lp -d {printer} -o resolution={quality} -o media={media_option} -o cpi=16 -o lpi=8 {filename}"
+    # คำสั่งสำหรับ Linux/Unix พร้อมการตั้งค่าขนาดตัวอักษรเล็กมากสำหรับกระดาษขนาด 95x46 มม.
+    command = f"lp -d {printer} -o resolution={quality} -o media={media_option} -o cpi=20 -o lpi=10 -o page-top=0 -o page-bottom=0 -o page-left=0 -o page-right=0 {filename}"
     
     return command
 
