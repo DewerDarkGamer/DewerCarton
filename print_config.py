@@ -94,11 +94,11 @@ class TextLayout:
 
     # ขนาดตัวอักษร (ปรับให้เล็กมากสำหรับกระดาษ 95x46 มม.)
     FONT_SIZES = {
-        "tiny": 2,      # เล็กมาก (สำหรับป้ายกำกับขนาดเล็ก)
-        "small": 3,     # เล็ก
-        "normal": 4,    # ปกติ (เล็กมากสำหรับขนาด 95x46 มม.)
-        "large": 5,     # ใหญ่
-        "xlarge": 6     # ใหญ่มาก
+        "tiny": 6,      # เล็กมาก (6 pt)
+        "small": 7,     # เล็ก (7 pt)  
+        "normal": 8,    # ปกติ (8 pt)
+        "large": 9,     # ใหญ่ (9 pt)
+        "xlarge": 10    # ใหญ่มาก (10 pt)
     }
 
     # การจัดตำแหน่งข้อความ
@@ -195,7 +195,8 @@ def get_print_command(filename, config_name="normal", paper_size="Label"):
 
     # คำสั่งสำหรับ Linux/Unix พร้อมการตั้งค่าขนาดตัวอักษรเล็กมากสำหรับกระดาษขนาด 95x46 มม.
     # เพิ่ม orientation=landscape เพื่อให้พิมพ์เป็นแนวนอน และปรับ margins ให้เหมาะสม
-    command = f"lp -d {printer} -o resolution={quality} -o media={media_option} -o orientation-requested=4 -o cpi=20 -o lpi=8 -o page-top=0 -o page-bottom=0 -o page-left=0 -o page-right=0 -o fit-to-page {filename}"
+    # และเพิ่ม font=Times-New-Roman
+    command = f"lp -d {printer} -o resolution={quality} -o media={media_option} -o orientation-requested=4 -o font=Times-New-Roman -o cpi=20 -o lpi=8 -o page-top=0 -o page-bottom=0 -o page-left=0 -o page-right=0 -o fit-to-page {filename}"
 
     return command
 
