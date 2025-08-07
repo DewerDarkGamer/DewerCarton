@@ -74,22 +74,57 @@ def scan_and_print():
         if IS_WINDOWS:
             # ใช้ Windows Print Spooler สำหรับการพิมพ์
             import subprocess
+            print_success = False
+            
+            # Method 1: ใช้คำสั่ง print กับชื่อ printer ที่ชัดเจน
             try:
-                # ใช้คำสั่ง print กับ Windows Print Spooler
-                subprocess.run(['print', f'/D:"MACarton"', filename], check=True)
+                result = subprocess.run(['print', f'/D:MACarton', filename], 
+                                      capture_output=True, text=True, check=True)
                 messagebox.showinfo("Success", f"Sent to MACarton printer via Print Spooler\nFile: {filename}")
-            except:
+                print_success = True
+            except subprocess.CalledProcessError as e:
+                print(f"Print command failed: {e}")
+                print(f"Output: {e.stdout}")
+                print(f"Error: {e.stderr}")
+                
+            # Method 2: ลองใช้คำสั่ง copy ไปยัง default printer
+            if not print_success:
                 try:
-                    # ลองใช้คำสั่ง copy ไปยัง printer port
-                    subprocess.run(['copy', filename, 'PRN'], shell=True, check=True)
-                    messagebox.showinfo("Success", "Printed to default printer via Print Spooler")
+                    result = subprocess.run(['copy', f'/B', filename, 'PRN'], 
+                                          shell=True, capture_output=True, text=True, check=True)
+                    messagebox.showinfo("Success", "Printed to default printer")
+                    print_success = True
+                except subprocess.CalledProcessError as e:
+                    print(f"Copy to PRN failed: {e}")
+                    
+            # Method 3: ลองใช้ PowerShell สำหรับพิมพ์
+            if not print_success:
+                try:
+                    ps_command = f'Get-Content "{filename}" | Out-Printer -Name "MACarton"'
+                    result = subprocess.run(['powershell', '-Command', ps_command], 
+                                          capture_output=True, text=True, check=True)
+                    messagebox.showinfo("Success", "Printed via PowerShell")
+                    print_success = True
+                except subprocess.CalledProcessError as e:
+                    print(f"PowerShell print failed: {e}")
+                    
+            # Method 4: ลองใช้ notepad /p เพื่อเปิด print dialog
+            if not print_success:
+                try:
+                    subprocess.run(['notepad', '/p', filename], check=True)
+                    messagebox.showinfo("Print Dialog", f"Print dialog opened\nFile: {filename}\nPlease select MACarton printer and click Print")
+                    print_success = True
                 except:
-                    try:
-                        # ลองใช้ lpr command (ถ้ามี)
-                        subprocess.run(['lpr', '-P', 'MACarton', filename], check=True)
-                        messagebox.showinfo("Success", "Printed via lpr command")
-                    except:
-                        messagebox.showinfo("File Saved", f"File saved as: {filename}\nManually print this file to MACarton printer")
+                    pass
+                    
+            # ถ้าทุกวิธีไม่ได้ผล
+            if not print_success:
+                messagebox.showinfo("File Saved", 
+                    f"File saved as: {filename}\n"
+                    f"Please:\n"
+                    f"1. Check if MACarton printer is connected\n"
+                    f"2. Right-click the file and select 'Print'\n"
+                    f"3. Or drag the file to MACarton printer icon")
         else:
             # คำสั่งสำหรับ Linux/Unix
             import subprocess
